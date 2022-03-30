@@ -116,10 +116,11 @@ if __name__ == "__main__":
         nfevs += nfev
         with torch.no_grad():
             y_pred = torch.argmax(resnet18(attack_image.to(device)))
-        bar.set_description(f"Accuracy: {correct/total*100}, mean no. calls to network: {nfevs/total}, True class: {y}, Pred class: {y_pred}")
+        bar.set_description(f"Accuracy: {correct/total*100}, mean func calls: {nfevs/total}, True class: {y}, Pred class: {y_pred}")
         results[i] = np.array([success, y.cpu().item(), y_pred.cpu().item(), nfev])
+        pd.DataFrame(results[:i+1]).to_csv("fast_OP_attack_result.csv", header=["attack success", "true class", "pred class", "network calls"])
+
     print(f"Accuracy: {correct/total*100}, mean no. calls to network: {nfevs/total}")
-    pd.DataFrame(results).to_csv("fast_OP_attack_result.csv", header=["attack success", "true class", "pred class", "network calls"])
 
     #################### Run OP attack original on whole dataset ####################
     print("Testing network with original OP attack...")
@@ -141,9 +142,10 @@ if __name__ == "__main__":
             success = 0
         else:
             success = 1
-        bar.set_description(f"Accuracy: {correct/total*100}, mean no. calls to network: {nfevs/total}, True class: {y}, Pred class: {y_pred}")
+        bar.set_description(f"Accuracy: {correct/total*100}, mean func calls: {nfevs/total}, True class: {y}, Pred class: {y_pred}")
         results[i] = np.array([success, y.cpu().item(), y_pred.cpu().item(), nfev])
+        pd.DataFrame(results[:i+1]).to_csv("original_OP_attack_result.csv", header=["attack success", "true class", "pred class", "network calls"])
+
     print(f"Accuracy: {correct/total*100}, mean no. calls to network: {nfevs/total}")
-    pd.DataFrame(results).to_csv("original_OP_attack_result.csv", header=["attack success", "true class", "pred class", "network calls"])
 
 
