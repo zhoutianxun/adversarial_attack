@@ -14,6 +14,7 @@ dependencies:
   - pytorch=1.10.0
   - torchvision=0.11.1
   - opencv=4.1.2
+  - pandas
   - tqdm
   - pip
   - pip:

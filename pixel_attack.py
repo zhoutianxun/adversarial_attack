@@ -2,6 +2,7 @@
 import sys, os
 import argparse
 import numpy as np
+import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 import json
@@ -88,7 +89,7 @@ if __name__ == "__main__":
 
     dataset = ImagenetDataset(image_dir, image_names, transform=None)
 
-    # Run ResNet18 without attacks
+    ######################## Run ResNet18 without attacks ########################
     print("Testing network without attacks...")
     correct = 0
     for x, y in tqdm(dataset, total=len(dataset)):
@@ -99,31 +100,37 @@ if __name__ == "__main__":
             correct += 1
     print(f"Accuracy of network without attack: {correct/len(dataset)*100}")
 
-    # Run OP attack fast on whole dataset
+    ##################### Run OP attack fast on whole dataset #####################
     print("Testing network with fast OP attack...")
     op_attack_fast = OP_attack_fast.OnePixelAttack(resnet18, transform, device)
     correct = 0
     total = 0
     nfevs = 0
+    results = np.zeros((len(dataset), 4))
     bar = tqdm(dataset, total=len(dataset))
-    for x, y in bar:
-        success, perturbation, nfev, attack_image = op_attack_fast.attack(x.clone().unsqueeze(0), y.view(1), pixels=args.pixels)#, verbose=True)
+    for i, data in enumerate(bar):
+        x, y = data
+        success, perturbation, nfev, attack_image = op_attack_fast.attack(x.clone().unsqueeze(0), y.view(1), pixels=args.pixels, maxiter=75, popsize=400)#, verbose=True)
         correct += (1-success)
         total += 1
         nfevs += nfev
         with torch.no_grad():
             y_pred = torch.argmax(resnet18(attack_image.to(device)))
         bar.set_description(f"Accuracy: {correct/total*100}, mean no. calls to network: {nfevs/total}, True class: {y}, Pred class: {y_pred}")
+        results[i] = np.array([success, y.cpu().item(), y_pred.cpu().item(), nfev])
     print(f"Accuracy: {correct/total*100}, mean no. calls to network: {nfevs/total}")
+    pd.DataFrame(results).to_csv("fast_OP_attack_result.csv", header=["attack success", "true class", "pred class", "network calls"])
 
-    # Run OP attack original on whole dataset
+    #################### Run OP attack original on whole dataset ####################
     print("Testing network with original OP attack...")
     op_attack_original = OP_attack_original.OnePixelAttack(resnet18, pixels=args.pixels, steps=75, popsize=400, inf_batch=128)
     correct = 0
     total = 0
     nfevs = 0
+    results = np.zeros((len(dataset), 4))
     bar = tqdm(dataset, total=len(dataset))
-    for x, y in bar:
+    for i, data in enumerate(bar):
+        x, y = data
         attack_image, nfev = op_attack_original.forward(x.clone().unsqueeze(0), y.view(1))
         total += 1
         nfevs += nfev
@@ -131,7 +138,12 @@ if __name__ == "__main__":
             y_pred = torch.argmax(resnet18(attack_image.to(device)))
         if y_pred == y:
             correct += 1
+            success = 0
+        else:
+            success = 1
         bar.set_description(f"Accuracy: {correct/total*100}, mean no. calls to network: {nfevs/total}, True class: {y}, Pred class: {y_pred}")
+        results[i] = np.array([success, y.cpu().item(), y_pred.cpu().item(), nfev])
     print(f"Accuracy: {correct/total*100}, mean no. calls to network: {nfevs/total}")
+    pd.DataFrame(results).to_csv("original_OP_attack_result.csv", header=["attack success", "true class", "pred class", "network calls"])
 
 
