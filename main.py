@@ -112,7 +112,7 @@ if __name__ == "__main__":
     bar = tqdm(dataset, total=len(dataset))
     for i, data in enumerate(bar):
         x, y = data
-        success, perturbation, nfev, attack_image = op_attack_fast.attack(x.clone().unsqueeze(0), y.view(1), pixels=args.pixels, maxiter=75, verbose=True)
+        success, perturbation, nfev, attack_image = op_attack_fast.attack(x.clone().unsqueeze(0), y.view(1), pixels=args.pixels, maxiter=75)
         correct += (1-success)
         total += 1
         nfevs += nfev
