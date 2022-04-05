@@ -57,8 +57,9 @@ class OnePixelAttack:
         popmul = int(max(1, popsize/len(bounds)))
 
         predict_fn = lambda xs: self.predict_classes(xs, img, target_calss, target is None)
-        callback_fn = lambda x, f, context: self.attack_success(x, img, target_calss, targeted_attack, verbose)
-
+        #callback_fn = lambda x, convergence: self.attack_success(x, img, target_calss, targeted_attack, verbose)
+        callback_fn = lambda x, f, context: self.attack_success(x, img, target_calss, targeted_attack)
+        '''
         inits = np.zeros([popmul*len(bounds), len(bounds)])
         for init in inits:
             for i in range(pixels):
@@ -67,8 +68,11 @@ class OnePixelAttack:
                 init[i * 5 + 2] = np.clip(np.random.normal(128, 127), 0, 255)
                 init[i * 5 + 3] = np.clip(np.random.normal(128, 127), 0, 255)
                 init[i * 5 + 4] = np.clip(np.random.normal(128, 127), 0, 255)
+        '''    
+        #attack_result = differential_evolution(predict_fn, bounds, maxiter=maxiter, popsize=popmul,
+        #                                       recombination=1, atol=-1, callback=callback_fn, polish=False, init=inits)
+        attack_result = dual_annealing(predict_fn, bounds, maxiter=maxiter, callback=callback_fn, no_local_search=True)
 
-        attack_result = dual_annealing(predict_fn, bounds, maxiter=maxiter*popmul, callback=callback_fn, no_local_search=True)
         attack_image = self.perturb_image(attack_result.x, img)
         with torch.no_grad():
             predicted_probs = F.softmax(self.net(attack_image.to(self.device)), dim=1).data.cpu().numpy()[0]

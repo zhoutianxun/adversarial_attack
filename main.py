@@ -60,6 +60,7 @@ def perturb_image(xs, img):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("-p", "--pixels", default=20, help="number of pixels for attack, type:int", type=int)
+    ap.add_argument("-n", "--n_test", default=100, help="number of test images, type:int", type=int)
     args = ap.parse_args()
 
     # set device
@@ -80,21 +81,22 @@ if __name__ == "__main__":
         label2idx = {class_idx[str(k)][0]: k for k in range(len(class_idx))}
 
     # create dataset
-    image_dir = "imagenet/test-images"
-    image_names = sorted(os.listdir("imagenet/test-images"))
+    image_dir = "imagenet/imagenet-images"
+    image_names = sorted(os.listdir(image_dir))[:args.n_test]
+    print(image_names)
     normalize = T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    transform = T.Compose([T.Resize(256), T.CenterCrop(224), normalize])
+    transform = T.Compose([T.Resize(256), T.CenterCrop(224)])
     inverse_transform = T.Compose([T.Normalize(mean = [ 0., 0., 0. ], std = [ 1/0.229, 1/0.224, 1/0.225 ]),
                                    T.Normalize(mean = [ -0.485, -0.456, -0.406 ], std = [ 1., 1., 1. ])])
 
-    dataset = ImagenetDataset(image_dir, image_names, transform=None)
+    dataset = ImagenetDataset(image_dir, image_names, transform=transform)
 
     ######################## Run ResNet18 without attacks ########################
     print("Testing network without attacks...")
     correct = 0
     for x, y in tqdm(dataset, total=len(dataset)):
         x = x.unsqueeze(0).to(device)
-        x = transform(x)
+        x = normalize(x)
         y_pred = torch.argmax(resnet18(x))
         if y_pred == y:
             correct += 1
@@ -102,7 +104,7 @@ if __name__ == "__main__":
 
     ##################### Run OP attack fast on whole dataset #####################
     print("Testing network with fast OP attack...")
-    op_attack_fast = OP_attack_fast.OnePixelAttack(resnet18, transform, device)
+    op_attack_fast = OP_attack_fast.OnePixelAttack(resnet18, normalize, device)
     correct = 0
     total = 0
     nfevs = 0
@@ -110,7 +112,7 @@ if __name__ == "__main__":
     bar = tqdm(dataset, total=len(dataset))
     for i, data in enumerate(bar):
         x, y = data
-        success, perturbation, nfev, attack_image = op_attack_fast.attack(x.clone().unsqueeze(0), y.view(1), pixels=args.pixels, maxiter=75, popsize=400)#, verbose=True)
+        success, perturbation, nfev, attack_image = op_attack_fast.attack(x.clone().unsqueeze(0), y.view(1), pixels=args.pixels, maxiter=75, verbose=True)
         correct += (1-success)
         total += 1
         nfevs += nfev
@@ -124,7 +126,7 @@ if __name__ == "__main__":
 
     #################### Run OP attack original on whole dataset ####################
     print("Testing network with original OP attack...")
-    op_attack_original = OP_attack_original.OnePixelAttack(resnet18, pixels=args.pixels, steps=75, popsize=400, inf_batch=128)
+    op_attack_original = OP_attack_original.OnePixelAttack(resnet18, pixels=args.pixels, steps=75, popsize=400, inf_batch=32)
     correct = 0
     total = 0
     nfevs = 0
@@ -132,7 +134,7 @@ if __name__ == "__main__":
     bar = tqdm(dataset, total=len(dataset))
     for i, data in enumerate(bar):
         x, y = data
-        attack_image, nfev = op_attack_original.forward(x.clone().unsqueeze(0), y.view(1))
+        attack_image, nfev = op_attack_original.forward(normalize(x.clone().unsqueeze(0)), y.view(1))
         total += 1
         nfevs += nfev
         with torch.no_grad():
