@@ -83,7 +83,6 @@ if __name__ == "__main__":
     # create dataset
     image_dir = "imagenet/imagenet-images"
     image_names = sorted(os.listdir(image_dir))[:args.n_test]
-    print(image_names)
     normalize = T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     transform = T.Compose([T.Resize(256), T.CenterCrop(224)])
     inverse_transform = T.Compose([T.Normalize(mean = [ 0., 0., 0. ], std = [ 1/0.229, 1/0.224, 1/0.225 ]),
