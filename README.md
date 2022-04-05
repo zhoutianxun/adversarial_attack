@@ -6,6 +6,16 @@ conda env create -f environment.yml
 conda activate adversarial
 ```
 
+### Directory setup
+```
+├── main.py # main script 
+├── OnePixelAttack.py
+├── OP_attack_fast.py 
+├── imagenet # directory to store image files for testing
+      ├── test-images
+      ├── imagenet_class_index.json
+```
+
 ### Run experiments
 Runs the following experiments
 * Network without attack
