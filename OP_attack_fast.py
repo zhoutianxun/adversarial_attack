@@ -46,7 +46,7 @@ class OnePixelAttack:
             return True
 
 
-    def attack(self, img, label, target=None, pixels=1, maxiter=75, popsize=400, verbose=False):
+    def attack(self, img, label, target=None, pixels=1, maxiter=75, popsize=400, mask=None, verbose=False):
         # img: 1*3*W*H tensor
         # label: a number
 
@@ -57,21 +57,34 @@ class OnePixelAttack:
         popmul = int(max(1, popsize/len(bounds)))
 
         predict_fn = lambda xs: self.predict_classes(xs, img, target_calss, target is None)
-        #callback_fn = lambda x, convergence: self.attack_success(x, img, target_calss, targeted_attack, verbose)
         callback_fn = lambda x, f, context: self.attack_success(x, img, target_calss, targeted_attack)
-        '''
-        inits = np.zeros([popmul*len(bounds), len(bounds)])
-        for init in inits:
+
+        if mask is not None:
+            # get mask matching to image. IMPORTANT: Assumes no duplicated classes in dataset
+            for m in mask.keys():
+                if mask[m]['y'] == label:
+                  break
+            mask_all = np.sum(mask[m]['mask'], axis=2)
+            c = np.max(mask_all)
+            pixels_available = len(np.nonzero(mask_all>=(c-1))[0])
+            pixel_index = np.nonzero(np.nonzero(mask_all>=(c-1)))
+
+        # create initialization points from within pixels highlighted by mask
+        if mask is not None and c!=0:
+            init = np.zeros((pixels*5))
+            chosen = np.random.choice(pixels_available, size=pixels, replace=False)
             for i in range(pixels):
-                init[i * 5 + 0] = np.random.random() * (img.shape[-2]-1)
-                init[i * 5 + 1] = np.random.random() * (img.shape[-1]-1)
-                init[i * 5 + 2] = np.clip(np.random.normal(128, 127), 0, 255)
-                init[i * 5 + 3] = np.clip(np.random.normal(128, 127), 0, 255)
-                init[i * 5 + 4] = np.clip(np.random.normal(128, 127), 0, 255)
-        '''    
-        #attack_result = differential_evolution(predict_fn, bounds, maxiter=maxiter, popsize=popmul,
-        #                                       recombination=1, atol=-1, callback=callback_fn, polish=False, init=inits)
-        attack_result = dual_annealing(predict_fn, bounds, maxiter=maxiter, callback=callback_fn, no_local_search=True)
+                row = pixel_index[0][chosen[i]]
+                col = pixel_index[0][chosen[i]]
+                init[i * 5 + 0] = row
+                init[i * 5 + 1] = col
+                init[i * 5 + 2] = (1-img[:, 0, row, col])*255
+                init[i * 5 + 3] = (1-img[:, 1, row, col])*255
+                init[i * 5 + 4] = (1-img[:, 2, row, col])*255
+        else:
+            init = None
+
+        attack_result = dual_annealing(predict_fn, bounds, maxiter=maxiter, callback=callback_fn, no_local_search=True, x0=init)
 
         attack_image = self.perturb_image(attack_result.x, img)
         with torch.no_grad():

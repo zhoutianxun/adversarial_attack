@@ -6,6 +6,7 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 import json
+import pickle
 
 # pytorch
 import torch
@@ -61,6 +62,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("-p", "--pixels", default=20, help="number of pixels for attack, type:int", type=int)
     ap.add_argument("-n", "--n_test", default=100, help="number of test images, type:int", type=int)
+    ap.add_argument("-m", "--mask", default=False, help="initialize attack with points sampled from image mask", type=bool)
     args = ap.parse_args()
 
     # set device
@@ -90,6 +92,12 @@ if __name__ == "__main__":
 
     dataset = ImagenetDataset(image_dir, image_names, transform=transform)
 
+    # load mask
+    if args.mask:
+        mask = pickle.load(open("imagenet/imagenet_mask.pkl", "rb"))
+    else:
+        mask = None
+
     ######################## Run ResNet18 without attacks ########################
     print("Testing network without attacks...")
     correct = 0
@@ -111,7 +119,7 @@ if __name__ == "__main__":
     bar = tqdm(dataset, total=len(dataset))
     for i, data in enumerate(bar):
         x, y = data
-        success, perturbation, nfev, attack_image = op_attack_fast.attack(x.clone().unsqueeze(0), y.view(1), pixels=args.pixels, maxiter=75)
+        success, perturbation, nfev, attack_image = op_attack_fast.attack(x.clone().unsqueeze(0), y.view(1), pixels=args.pixels, maxiter=75, mask=None)
         correct += (1-success)
         total += 1
         nfevs += nfev
