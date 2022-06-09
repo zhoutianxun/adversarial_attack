@@ -1,5 +1,7 @@
 # adversarial_attack
 
+Code for "Optimizing One-pixel Black-box Adversarial Attacks" https://arxiv.org/abs/2205.02116
+
 ### Requirements
 ```
 conda env create -f environment.yml
@@ -16,6 +18,8 @@ conda activate adversarial
       ├── imagenet_class_index.json
       ├── imagenet_mask.pkl
 ```
+To get the necessary files for imagenet directory, download from: https://drive.google.com/drive/folders/1elews75KB49_hKW6WKXgpq-zlf46piWO
+There is also a jupyter notebook provided in the link to run the same experiments in Colab
 
 ### Run experiments
 Runs the following experiments
